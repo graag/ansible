@@ -161,6 +161,15 @@ options:
     default: false
     required: false
     version_added: "2.2"
+  ignore_all:
+    description:
+      - When C(state) is I(present) or I(started) the module compares the
+        configuration of an existing container to requested configuration. If
+        requested configuration does not match the container, the container
+        will be recreated. Stop this behavior by setting C(ignore_all) to
+        I(True).
+    default: false
+    required: false
   image:
     description:
       - Repository path and tag used to create the container. If an image is not found or pull is true, the image
@@ -712,6 +721,7 @@ class TaskParameters(DockerBaseClass):
         self.groups = None
         self.hostname = None
         self.ignore_image = None
+        self.ignore_all = None
         self.image = None
         self.interactive = None
         self.ipc_mode = None
@@ -1710,10 +1720,13 @@ class ContainerManager(DockerBaseClass):
                 container = new_container
         else:
             # Existing container
-            different, differences = container.has_different_configuration(image)
             image_different = False
+            different = False
+            differences = None
             if not self.parameters.ignore_image:
                 image_different = self._image_is_different(image, container)
+            if not self.parameters.ignore_all:
+                different, differences = container.has_different_configuration(image)
             if image_different or different or self.parameters.recreate:
                 self.diff['differences'] = differences
                 if image_different:
@@ -1980,6 +1993,7 @@ def main():
         groups=dict(type='list'),
         hostname=dict(type='str'),
         ignore_image=dict(type='bool', default=False),
+        ignore_all=dict(type='bool', default=False),
         image=dict(type='str'),
         interactive=dict(type='bool', default=False),
         ipc_mode=dict(type='str'),
